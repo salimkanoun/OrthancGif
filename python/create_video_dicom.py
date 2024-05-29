@@ -4,6 +4,8 @@ from pydicom.dataset import FileMetaDataset
 from pydicom.encaps import encapsulate
 from pydicom.tag import Tag
 
+import cv2
+
 
 
 
@@ -13,9 +15,11 @@ class CreateDicomVideo:
 
     def create_dicom(self, output) -> None:
         ds = Dataset()
+        ds.SeriesDescription = "Video"
+        ds.StudyDescription = "Video"
         ds.PatientName = "CITIZEN^Joan"
         ds.PhotometricInterpretation = 'YBR_PARTIAL_420'
-        ds.LossyImageCompressionMethod = 'ISO_14496_10'
+        ds.LossyImageCompression = '01'
         ds.PatientID = "123456"
         ds.StudyInstanceUID = pydicom.uid.generate_uid()
         ds.SeriesInstanceUID = pydicom.uid.generate_uid()
@@ -47,22 +51,27 @@ class CreateDicomVideo:
         ds.BitsAllocated = 8
         ds.HighBit = 7
         ds.PixelRepresentation = 0
+        ds.BitsStored = 8
         
-        ds.NumberOfFrames = 100
-        ds.Rows= 1080
-        ds.Columns = 1920
-        ds.FrameTime = 0.033
-                
         with open(self.filename, 'rb') as f:
+            video = cv2.VideoCapture(self.filename)
+
             ds.PixelData = encapsulate([f.read()])
+            ds.NumberOfFrames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+            ds.Rows= int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            ds.Columns = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
+            ds.CineRate = int(video.get(cv2.CAP_PROP_FPS))
+            ds.FrameTime = 1 / ds.CineRate * 1000
             
         file_meta = FileMetaDataset()
-        file_meta.TransferSyntaxUID = pydicom.uid.MPEG4HP41
+        file_meta.TransferSyntaxUID = pydicom.uid.MPEG4HP41BD
         file_meta.MediaStorageSOPClassUID = pydicom.uid.VideoEndoscopicImageStorage
-        file_meta.ImplementationClassUID = pydicom.uid.PYDICOM_IMPLEMENTATION_UID    
-        file_dataset = FileDataset('video.dcm', ds, None, file_meta, False, True)
-        dcmwrite('video.dcm',file_dataset)
+        file_meta.ImplementationClassUID = pydicom.uid.PYDICOM_IMPLEMENTATION_UID
+        file_meta.MediaStorageSOPInstanceUID = ds.SOPInstanceUID
+        file_dataset = FileDataset(output, ds, None, file_meta, False, True)
+        dcmwrite(output, file_dataset, write_like_original=False)
 
 if __name__ == '__main__':
     create_video = CreateDicomVideo("c6e40975-a3be-e9a6-36ab-09e678c9f095.mp4")
+    # create_video = CreateDicomVideo("file_example_MP4_1920_18MG.mp4")
     create_video.create_dicom("video.dcm")
