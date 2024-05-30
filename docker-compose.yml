@@ -1,12 +1,12 @@
 version: '3.1'  # Secrets are only available since this version of Docker Compose
 services:
   orthanc:
-    image: osimis/orthanc
+    image: orthancteam/orthanc
     build:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - "/Users/theophilushomawoo/Documents/stage/galeo/python/OrthancGif/python:/python/:ro"
+      - "./python/:/python/:ro"
       - "dicom_storage:/var/lib/orthanc/db:Z"
     ports:
       - 4242:4242

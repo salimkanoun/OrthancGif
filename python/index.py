@@ -1,8 +1,17 @@
 import numpy as np
 import io
 import orthanc
+import json
+import base64
+
 from mosaic import MosaicGenerator
 from mip import MIPGenerator
+from create_dicom_video import CreateDicomVideo
+
+from pydicom.filebase import DicomFileLike
+from pydicom import Dataset, FileDataset, dcmwrite
+
+from typing import BinaryIO
 
 def get_nparray(series: str):
     response = orthanc.RestApiGet( f'/series/{series}/numpy?rescale=true')
@@ -59,18 +68,41 @@ def displayMosaic(output, uri, **request):
                 output.AnswerBuffer(f.read(), 'image/png')
     else:
         output.SendMethodNotAllowed('GET')
-
-def displayBugReproduction(output, uri, **request):
-    if request['method'] == 'GET':
+        
+def videoToOrthanc(output, uri: str, **request) -> None:
+    body = json.loads(request['body'].decode('utf-8'))
+    if request['method'] == 'POST':
         try:
-            squared_list = BugReproduction().bug_reproduction()
-            output.AnswerBuffer(str(squared_list), 'text/plain')
+            byte = base64.b64decode(body['Content'])
+            fileDataset = CreateDicomVideo(byte).create_dicom(body['Parent'], body['Tags']).fileDataset
+            
+            with io.BytesIO() as f:
+                dcmwrite(f, fileDataset, write_like_original=False)
+                f.seek(0)
+                print(f)
+                orthanc.RestApiPost(f'/instances', f.read())
+            
+            output.AnswerBuffer(fileDataset.data_element('SOPInstanceUID').value, 'text/plain')
         except Exception as e:
+            print('Error:', e)
             output.AnswerBuffer(str(e), 'text/plain')
     else:
-        output.SendMethodNotAllowed('GET')
+        output.SendMethodNotAllowed('POST')
+    
 
-orthanc.RegisterRestCallback('/bug_test', displayBugReproduction)
+
+# def displayBugReproduction(output, uri, **request):
+#     if request['method'] == 'GET':
+#         try:
+#             squared_list = BugReproduction().bug_reproduction()
+#             output.AnswerBuffer(str(squared_list), 'text/plain')
+#         except Exception as e:
+#             output.AnswerBuffer(str(e), 'text/plain')
+#     else:
+#         output.SendMethodNotAllowed('GET')
+
+# orthanc.RegisterRestCallback('/bug_test', displayBugReproduction)
 
 orthanc.RegisterRestCallback('/series/(.*)/mosaic', displayMosaic)
 orthanc.RegisterRestCallback('/series/(.*)/mip', displayGif)
+orthanc.RegisterRestCallback('/video_test', videoToOrthanc)
