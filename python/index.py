@@ -74,15 +74,13 @@ def videoToOrthanc(output, uri: str, **request) -> None:
     if request['method'] == 'POST':
         try:
             byte = base64.b64decode(body['Content'])
-            fileDataset = CreateDicomVideo(byte).create_dicom(body['Parent'], body['Tags']).fileDataset
+            fileDataset = CreateDicomVideo(byte).create_dicom(body.get('Parent', None), body.get('Tags', {})).fileDataset
             
             with io.BytesIO() as f:
                 dcmwrite(f, fileDataset, write_like_original=False)
                 f.seek(0)
-                print(f)
-                orthanc.RestApiPost(f'/instances', f.read())
-            
-            output.AnswerBuffer(fileDataset.data_element('SOPInstanceUID').value, 'text/plain')
+                r = orthanc.RestApiPost(f'/instances', f.read())            
+            output.AnswerBuffer(r.decode('utf-8'), 'application/json')
         except Exception as e:
             print('Error:', e)
             output.AnswerBuffer(str(e), 'text/plain')
