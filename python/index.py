@@ -74,7 +74,7 @@ def videoToOrthanc(output, uri: str, **request) -> None:
     if request['method'] == 'POST':
         try:
             byte = base64.b64decode(body['Content'])
-            fileDataset = CreateDicomVideo(byte).create_dicom(body['Parent'], body['Tags']).fileDataset
+            fileDataset = CreateDicomVideo(byte).create_dicom(body.get('Parent', None), body.get('Tags', {})).fileDataset
             
             with io.BytesIO() as f:
                 dcmwrite(f, fileDataset, write_like_original=False)

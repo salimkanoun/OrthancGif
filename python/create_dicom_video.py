@@ -51,10 +51,10 @@ class CreateDicomVideo:
         if level == 'series':
             data_series = json.loads(orthanc.RestApiGet(f"/series/{orthanc_id}/"))
             data = {
-                'SeriesInstanceUID': data.get('MainDicomTags', {}).get('SeriesInstanceUID'),
-                'SeriesDescription': data.get('MainDicomTags', {}).get('SeriesDescription'),
-                'SeriesDate': data.get('MainDicomTags', {}).get('SeriesDate'),
-                'SeriesTime': data.get('MainDicomTags', {}).get('SeriesTime'),
+                'SeriesInstanceUID': data_series.get('MainDicomTags', {}).get('SeriesInstanceUID'),
+                'SeriesDescription': data_series.get('MainDicomTags', {}).get('SeriesDescription'),
+                'SeriesDate': data_series.get('MainDicomTags', {}).get('SeriesDate'),
+                'SeriesTime': data_series.get('MainDicomTags', {}).get('SeriesTime'),
             }
             orthanc_id = data_series.get('ParentStudy')
         if level == 'studies' or level == 'series':
@@ -79,7 +79,7 @@ class CreateDicomVideo:
         return data
 
     def create_dicom(self, parent: str, dcm_data: dict) -> 'CreateDicomVideo':
-        parent_data = self._retrieve_dicom_data(parent)
+        parent_data = self._retrieve_dicom_data(parent) if parent else {}
         self.dataset = Dataset()
 
         self.dataset.PatientName = parent_data.get('PatientName', "<PATIENT_NAME>")
