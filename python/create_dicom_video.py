@@ -7,7 +7,6 @@ import cv2
 import tempfile
 import orthanc
 import json
-from pprint import pprint
 
 class CreateDicomVideo:
     def __init__(self, byte: bytes):
